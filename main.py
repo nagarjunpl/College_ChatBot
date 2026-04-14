@@ -28,10 +28,10 @@ def load_website(url):
     text = soup.get_text(separator="\n")
     return text
 
-# 🚀 Create app
+#  Create app
 app = FastAPI()
 
-# 🌐 Enable CORS (for frontend)
+#  Enable CORS (for frontend)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -40,7 +40,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# 📄 STEP 1: Load ALL PDFs from folder
+#  STEP 1: Load ALL PDFs from folder
 all_docs = []
 folder_path = "data"
 
@@ -76,23 +76,23 @@ docs = text_splitter.split_documents(all_docs)
 
 print(f" Split into {len(docs)} chunks")
 
-# 🔢 STEP 3: Embeddings + Vector DB
+#  STEP 3: Embeddings + Vector DB
 embeddings = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
 db = FAISS.from_documents(docs, embeddings)
 
-print("✅ Vector DB created")
+print(" Vector DB created")
 
-# 🤖 STEP 4: Load QA Model
+#  STEP 4: Load QA Model
 tokenizer = AutoTokenizer.from_pretrained("distilbert-base-cased-distilled-squad")
 model = AutoModelForQuestionAnswering.from_pretrained("distilbert-base-cased-distilled-squad")
 
-print("✅ QA Model loaded")
+print(" QA Model loaded")
 
-# 📩 Request format
+#  Request format
 class Query(BaseModel):
     question: str
 
-# 🧠 Answer function
+#  Answer function
 def get_answer(question, context):
     inputs = tokenizer(question, context, return_tensors="pt", truncation=True)
 
@@ -105,16 +105,16 @@ def get_answer(question, context):
     answer = tokenizer.decode(inputs["input_ids"][0][start_idx:end_idx])
     return answer
 
-# 💬 API endpoint
+#  API endpoint
 @app.post("/chat")
 def chat(query: Query):
-    # 🔍 Search relevant chunks
+    #  Search relevant chunks
     results = db.similarity_search(query.question, k=3)
 
-    # 🧩 Combine context
+    #  Combine context
     context = " ".join([doc.page_content for doc in results])[:1000]
 
-    # 🎯 Get answer
+    #  Get answer
     answer = get_answer(query.question, context)
 
     return {"answer": answer}
