@@ -3,7 +3,8 @@ from pydantic import BaseModel
 from fastapi.middleware.cors import CORSMiddleware
 
 import os
-import google.generativeai as genai
+# pip install groq
+from groq import Groq
 
 from dotenv import load_dotenv
 load_dotenv()
@@ -69,23 +70,56 @@ embeddings = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
 db = FAISS.from_documents(docs, embeddings)
 print("Vector DB ready")
 
-# ── Gemini setup ──
-genai.configure(api_key=os.environ["GEMINI_API_KEY"])
-gemini = genai.GenerativeModel("gemini-2.0-flash")
+# ── Groq setup ──
+api_key = os.getenv("GROQ_API_KEY")
+
+if not api_key:
+    raise ValueError("GROQ_API_KEY not found in environment variables")
+
+client = Groq(api_key=api_key)
+
+@app.get("/")
+def home():
+    return {"message": "PESCE Chatbot API is running"}
 
 @app.post("/chat")
 def chat(query: Query):
-    results = db.similarity_search(query.question, k=5)
-    context = "\n\n---\n\n".join([doc.page_content for doc in results])
+    try:
+        results = db.similarity_search(query.question, k=5)
 
-    prompt = f"""You are a helpful assistant for PESCE (P.E.S. College of Engineering), Mandya.
-Answer using ONLY the context below. Be clear and concise.
-If the answer is not in the context, say: "I don't have that information. Please contact the college office directly."
+        # Always define context
+        if results:
+            context = "\n\n---\n\n".join([doc.page_content for doc in results])
+            context = context[:4000]
+        else:
+            context = ""
 
-Context:
-{context}
+        # If no context, return early
+        if not context.strip():
+            return {"answer": "I don't know based on available data."}
 
-Question: {query.question}"""
+        response = client.chat.completions.create(
+            model="llama-3.1-8b-instant",
+            messages=[
+                {
+                "role": "system",
+                "content": """You are an AI assistant for PES College of Engineering.
 
-    response = gemini.generate_content(prompt)
-    return {"answer": response.text}
+                Answer clearly and completely using the given context.
+                - Provide full answers, not short or partial.
+                - If multiple points exist, explain them properly.
+                - If answer is not in context, say: "I don't know based on available data."
+                """
+                },
+                {
+                    "role": "user",
+                    "content": f"Context:\n{context}\n\nQuestion: {query.question}"
+                }
+            ]
+        )
+
+        return {"answer": response.choices[0].message.content}
+
+    except Exception as e:
+        print("ERROR:", e)
+        return {"answer": "Sorry, something went wrong. Please try again."}
