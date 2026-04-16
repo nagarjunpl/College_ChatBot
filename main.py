@@ -3,35 +3,29 @@ from pydantic import BaseModel
 from fastapi.middleware.cors import CORSMiddleware
 
 import os
-import torch
+import google.generativeai as genai
+
+from dotenv import load_dotenv
+load_dotenv()
 
 from langchain_community.document_loaders import PyPDFLoader
 from langchain_text_splitters import CharacterTextSplitter
 from langchain_community.embeddings import HuggingFaceEmbeddings
 from langchain_community.vectorstores import FAISS
-
 from langchain_core.documents import Document
-
-from transformers import AutoTokenizer, AutoModelForQuestionAnswering
 
 import requests
 from bs4 import BeautifulSoup
 
 def load_website(url):
-    response = requests.get(url)
+    response = requests.get(url, timeout=10)
     soup = BeautifulSoup(response.text, "html.parser")
+    for tag in soup(["script", "style", "nav", "footer"]):
+        tag.extract()
+    return soup.get_text(separator="\n", strip=True)
 
-    # Remove scripts/styles
-    for script in soup(["script", "style"]):
-        script.extract()
-
-    text = soup.get_text(separator="\n")
-    return text
-
-#  Create app
 app = FastAPI()
 
-#  Enable CORS (for frontend)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -40,81 +34,58 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-#  STEP 1: Load ALL PDFs from folder
+# ── THIS WAS MISSING ──
+class Query(BaseModel):
+    question: str
+
+# ── Load PDFs ──
 all_docs = []
 folder_path = "data"
 
 for file in os.listdir(folder_path):
     if file.endswith(".pdf"):
         loader = PyPDFLoader(os.path.join(folder_path, file))
-        documents = loader.load()
-
-        # Add source info (optional)
-        for doc in documents:
+        pages = loader.load()
+        for doc in pages:
             doc.metadata["source"] = file
+        all_docs.extend(pages)
 
-        all_docs.extend(documents)
+print(f"Loaded {len(all_docs)} PDF pages")
 
-print(f" Loaded {len(all_docs)} pages from PDFs")
+# ── Load website ──
+try:
+    website_text = load_website("https://pesce.ac.in/")
+    all_docs.append(Document(page_content=website_text, metadata={"source": "pesce.ac.in"}))
+    print("Website loaded")
+except Exception as e:
+    print(f"Website load failed: {e}")
 
-# Add your college website
-website_url = "https://pesce.ac.in/"
+# ── Chunk & embed ──
+splitter = CharacterTextSplitter(chunk_size=600, chunk_overlap=80)
+docs = splitter.split_documents(all_docs)
+print(f"Split into {len(docs)} chunks")
 
-website_text = load_website(website_url)
-
-website_doc = Document(
-    page_content=website_text,
-    metadata={"source": "website"}
-)
-
-# Add to existing docs
-all_docs.append(website_doc)
-
-# STEP 2: Split text
-text_splitter = CharacterTextSplitter(chunk_size=300, chunk_overlap=30)
-docs = text_splitter.split_documents(all_docs)
-
-print(f" Split into {len(docs)} chunks")
-
-#  STEP 3: Embeddings + Vector DB
 embeddings = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
 db = FAISS.from_documents(docs, embeddings)
+print("Vector DB ready")
 
-print(" Vector DB created")
+# ── Gemini setup ──
+genai.configure(api_key=os.environ["GEMINI_API_KEY"])
+gemini = genai.GenerativeModel("gemini-2.0-flash")
 
-#  STEP 4: Load QA Model
-tokenizer = AutoTokenizer.from_pretrained("distilbert-base-cased-distilled-squad")
-model = AutoModelForQuestionAnswering.from_pretrained("distilbert-base-cased-distilled-squad")
-
-print(" QA Model loaded")
-
-#  Request format
-class Query(BaseModel):
-    question: str
-
-#  Answer function
-def get_answer(question, context):
-    inputs = tokenizer(question, context, return_tensors="pt", truncation=True)
-
-    with torch.no_grad():
-        outputs = model(**inputs)
-
-    start_idx = torch.argmax(outputs.start_logits)
-    end_idx = torch.argmax(outputs.end_logits) + 1
-
-    answer = tokenizer.decode(inputs["input_ids"][0][start_idx:end_idx])
-    return answer
-
-#  API endpoint
 @app.post("/chat")
 def chat(query: Query):
-    #  Search relevant chunks
-    results = db.similarity_search(query.question, k=3)
+    results = db.similarity_search(query.question, k=5)
+    context = "\n\n---\n\n".join([doc.page_content for doc in results])
 
-    #  Combine context
-    context = " ".join([doc.page_content for doc in results])[:1000]
+    prompt = f"""You are a helpful assistant for PESCE (P.E.S. College of Engineering), Mandya.
+Answer using ONLY the context below. Be clear and concise.
+If the answer is not in the context, say: "I don't have that information. Please contact the college office directly."
 
-    #  Get answer
-    answer = get_answer(query.question, context)
+Context:
+{context}
 
-    return {"answer": answer}
+Question: {query.question}"""
+
+    response = gemini.generate_content(prompt)
+    return {"answer": response.text}
