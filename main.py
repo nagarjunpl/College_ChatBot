@@ -39,7 +39,9 @@ app.add_middleware(
 class Query(BaseModel):
     question: str
 
-
+# ✅ DEFINE FIRST
+all_docs = []
+folder_path = "data"
 
 # ── Load website ──
 try:
