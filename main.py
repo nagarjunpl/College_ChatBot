@@ -39,19 +39,7 @@ app.add_middleware(
 class Query(BaseModel):
     question: str
 
-# ── Load PDFs ──
-all_docs = []
-folder_path = "data"
 
-for file in os.listdir(folder_path):
-    if file.endswith(".pdf"):
-        loader = PyPDFLoader(os.path.join(folder_path, file))
-        pages = loader.load()
-        for doc in pages:
-            doc.metadata["source"] = file
-        all_docs.extend(pages)
-
-print(f"Loaded {len(all_docs)} PDF pages")
 
 # ── Load website ──
 try:
@@ -67,7 +55,7 @@ docs = splitter.split_documents(all_docs)
 print(f"Split into {len(docs)} chunks")
 
 embeddings = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
-db = FAISS.from_documents(docs, embeddings)
+db = FAISS.load_local("faiss_index", embeddings, allow_dangerous_deserialization=True)
 print("Vector DB ready")
 
 # ── Groq setup ──
