@@ -1,12 +1,7 @@
 fastapi
 uvicorn
-python-dotenv
 groq
+python-dotenv
 langchain
 langchain-community
-langchain-text-splitters
 faiss-cpu
-sentence-transformers
-pypdf
-beautifulsoup4
-requests
