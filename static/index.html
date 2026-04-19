@@ -689,7 +689,7 @@
       <button class="icon-btn" title="Search">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
       </button>
-      <button class="icon-btn" title="Share">
+      <button class="icon-btn" id="shareBtn" title="Share" style="display:none;" onclick="shareChat()">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/>
           <path d="M8.59 13.51l6.83 3.98M15.41 6.51L8.59 10.49"/>
@@ -818,6 +818,7 @@
   function showMessages() {
     emptyEl.style.display = 'none';
     msgsEl.style.display = 'block';
+    document.getElementById('shareBtn').style.display = 'flex';
   }
 
   function appendMsg(text, role) {
@@ -857,18 +858,6 @@
             <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
           </svg>
         </button>
-        <button class="act-btn" title="Helpful">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3H14z"/>
-            <path d="M7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"/>
-          </svg>
-        </button>
-        <button class="act-btn" title="Not helpful">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M10 15v4a3 3 0 0 0 3 3l4-9V2H5.72a2 2 0 0 0-2 1.7l-1.38 9a2 2 0 0 0 2 2.3H10z"/>
-            <path d="M17 2h2.67A2.31 2.31 0 0 1 22 4v7a2.31 2.31 0 0 1-2.33 2H17"/>
-          </svg>
-        </button>`;
       content.appendChild(actions);
     }
 
@@ -939,7 +928,34 @@
     inputEl.style.height = 'auto';
     sendBtn.disabled = true;
     scrollBtnEl.classList.remove('visible');
+    document.getElementById('shareBtn').style.display = 'none';
+    }
+
+    function shareChat() {
+    const msgs = msgsEl.querySelectorAll('.msg-block');
+    if (!msgs.length) return;
+
+    let text = '🎓 College AI Chat\n' + '─'.repeat(30) + '\n\n';
+    msgs.forEach(block => {
+      const sender = block.querySelector('.m-sender').textContent.trim();
+      const message = block.querySelector('.m-text').textContent.trim();
+      text += `${sender}:\n${message}\n\n`;
+    });
+
+    if (navigator.share) {
+      navigator.share({ title: 'College AI Chat', text: text })
+        .catch(() => {});
+    } else {
+      navigator.clipboard.writeText(text).then(() => {
+        const btn = document.getElementById('shareBtn');
+        const orig = btn.innerHTML;
+        btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>`;
+        btn.title = 'Copied!';
+        setTimeout(() => { btn.innerHTML = orig; btn.title = 'Share'; }, 2000);
+      }).catch(() => {});
+    }
   }
+
 </script>
 </body>
 </html>
