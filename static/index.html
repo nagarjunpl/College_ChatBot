@@ -115,14 +115,15 @@
     .sidebar-label {
       font-size: 10.5px;
       font-weight: 600;
-      color: var(--text-subtle);
+      color: black;
       text-transform: uppercase;
       letter-spacing: .1em;
-      padding: 0 8px;
+      padding: 0 25px;
       margin-bottom: 6px;
     }
     .history-item {
-      padding: 9px 12px;
+      padding: 10px 20px;
+      margin-bottom: 5px;
       border-radius: 10px;
       cursor: pointer;
       font-size: 13.5px;
@@ -613,25 +614,26 @@
   </div>
 
   <div class="sidebar-label">Recent</div>
-  <div id="historyList" style="display:flex; flex-direction:column; gap:2px;">
+  <div id="historyList" style="display:flex; flex-direction:column; gap:2px; flex:1; overflow-y:auto; padding: 0 12px;">
     <div style="font-size:12px; color:var(--text-subtle); padding: 6px 12px; font-style:italic;">No chats yet</div>
   </div>
-
-  <div class="sidebar-divider"></div>
-
-  <div class="sidebar-section">
-    <div class="sidebar-label">Quick Links</div>
-      <div class="history-item" onclick="window.open('https://pesce.ac.in/admissions.php', '_blank')" style="cursor:pointer;">
-        <span>📋 Admission Form</span>
-      </div>
-      <div class="history-item" onclick="window.open('https://pesgroup.dhi-edu.com/', '_blank')" style="cursor:pointer;">
-        <span>📊 Student Portal</span>
-      </div>
-      <div class="history-item" onclick="window.open('http://www.pescemandya.org/contact-us.php', '_blank')" style="cursor:pointer;">
-        <span>📞 Contact Office</span>
-      </div>
+  
+  <div class="sidebar-bottom">
+    <div class="sidebar-divider" style="margin: 0 0 8px 0;"></div>
+    <div class="sidebar-label" style="padding: 0 12px; color: black; margin-left: 30px; margin-bottom: 6px;">Quick Links</div>
+    <div class="history-item" onclick="window.open('https://pesce.ac.in/admissions.php', '_blank')">
+      <span>📋 Admission Form</span>
+    </div>
+    <div class="history-item" onclick="window.open('https://pesgroup.dhi-edu.com/', '_blank')">
+      <span>📊 Student Portal</span>
+    </div>
+    <div class="history-item" onclick="window.open('http://www.pescemandya.org/contact-us.php', '_blank')">
+      <span>📞 Contact Office</span>
+    </div>
   </div>
+
 </div>
+
 
 <!-- Main -->
 <div class="main">
