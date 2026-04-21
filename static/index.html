@@ -642,13 +642,9 @@
     </button>
   </div>
 
-  <div class="sidebar-section">
-    <div class="sidebar-label">Recent</div>
-    <div class="history-item active">Admission Process Query</div>
-    <div class="history-item">Fee Structure 2024</div>
-    <div class="history-item">Hostel &amp; Campus Info</div>
-    <div class="history-item">Academic Calendar</div>
-    <div class="history-item">Scholarship Details</div>
+  <div class="sidebar-label">Recent</div>
+  <div id="historyList" style="display:flex; flex-direction:column; gap:2px;">
+    <div style="font-size:12px; color:var(--text-subtle); padding: 6px 12px; font-style:italic;">No chats yet</div>
   </div>
 
   <div class="sidebar-divider"></div>
@@ -793,6 +789,40 @@
   const bodyEl   = document.getElementById('chatBody');
   const scrollBtnEl = document.getElementById('scrollBtn');
 
+  let chatHistory = [];
+  let currentChatId = null;
+
+  function addToHistory(question) {
+    // Don't add duplicate of the current active chat
+    if (currentChatId && chatHistory[0]?.id === currentChatId) return;
+
+    const id = Date.now();
+    currentChatId = id;
+    const entry = { id, label: question.length > 32 ? question.slice(0, 32) + '…' : question };
+    chatHistory.unshift(entry);
+
+    renderHistory();
+  }
+
+  function renderHistory() {
+    const list = document.getElementById('historyList');
+    if (!chatHistory.length) {
+      list.innerHTML = `<div style="font-size:12px; color:var(--text-subtle); padding:6px 12px; font-style:italic;">No chats yet</div>`;
+      return;
+    }
+    list.innerHTML = chatHistory.map(entry => `
+      <div class="history-item ${entry.id === currentChatId ? 'active' : ''}"
+          onclick="loadHistory(${entry.id})">
+        ${entry.label}
+      </div>
+    `).join('');
+  }
+
+  function loadHistory(id) {
+    currentChatId = id;
+    renderHistory(); // just highlights the selected one for now
+  }
+
   inputEl.addEventListener('input', () => {
     sendBtn.disabled = !inputEl.value.trim();
   });
@@ -912,6 +942,8 @@
 
     sendBtn.disabled = false;
     inputEl.focus();
+
+    addToHistory(text);
   }
 
   function quickSend(text) {
@@ -954,6 +986,9 @@
           setTimeout(() => { btn.innerHTML = orig; btn.title = 'Share'; }, 2000);
         }).catch(() => {});
       }
+      
+      currentChatId = null;
+      renderHistory();
     }
 
 </script>
