@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
   <title>College AI Assistant</title>
   <link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,600;1,400&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
   <style>
@@ -25,22 +25,37 @@
       --bot-bubble:    #ffffff;
       --shadow-sm:     0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
       --shadow-md:     0 4px 16px rgba(0,0,0,0.08), 0 2px 6px rgba(0,0,0,0.04);
+      --sidebar-width: 272px;
     }
 
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html, body {
+      height: 100%;
+      overflow: hidden;
+    }
 
     body {
       font-family: 'DM Sans', sans-serif;
       background: var(--main-bg);
       color: var(--text-primary);
-      height: 100vh;
       display: flex;
-      overflow: hidden;
     }
+
+    /* ── Overlay for mobile sidebar ── */
+    .sidebar-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.4);
+      z-index: 99;
+      backdrop-filter: blur(2px);
+    }
+    .sidebar-overlay.open { display: block; }
 
     /* ── Sidebar ── */
     .sidebar {
-      width: 272px;
+      width: var(--sidebar-width);
       height: 100vh;
       background: var(--sidebar-bg);
       display: flex;
@@ -48,9 +63,9 @@
       flex-shrink: 0;
       border-right: 1px solid var(--border);
       position: relative;
+      transition: transform 0.28s cubic-bezier(0.4, 0, 0.2, 1);
     }
 
-    /* Subtle texture overlay */
     .sidebar::before {
       content: '';
       position: absolute;
@@ -121,6 +136,16 @@
       padding: 0 25px;
       margin-bottom: 6px;
     }
+
+    #historyList {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      flex: 1;
+      overflow-y: auto;
+      padding: 0 12px;
+    }
+
     .history-item {
       padding: 10px 20px;
       margin-bottom: 5px;
@@ -149,6 +174,10 @@
     .history-item.active { background: var(--active-bg); color: var(--text-primary); font-weight: 500; }
     .history-item.active::before { background: var(--accent); }
 
+    .sidebar-bottom {
+      padding-bottom: 12px;
+    }
+
     .sidebar-divider {
       height: 1px;
       background: var(--border-light);
@@ -163,6 +192,7 @@
       height: 100vh;
       overflow: hidden;
       background: var(--main-bg);
+      min-width: 0;
     }
 
     .topbar {
@@ -170,12 +200,26 @@
       display: flex;
       align-items: center;
       justify-content: space-between;
-      padding: 0 24px;
+      padding: 0 16px 0 24px;
       flex-shrink: 0;
       border-bottom: 1px solid var(--border-light);
-      background: rgba(250,248,244,0.8);
+      background: rgba(250,248,244,0.95);
       backdrop-filter: blur(8px);
+      gap: 8px;
     }
+
+    /* Mobile menu toggle — hidden on desktop */
+    .mobile-menu-btn {
+      display: none;
+      width: 36px; height: 36px;
+      align-items: center; justify-content: center;
+      border-radius: 10px;
+      cursor: pointer;
+      color: var(--text-muted);
+      border: none; background: none;
+      flex-shrink: 0;
+    }
+    .mobile-menu-btn svg { width: 20px; height: 20px; }
 
     .model-pill {
       display: flex;
@@ -192,6 +236,7 @@
       font-family: 'DM Sans', sans-serif;
       transition: background .15s, box-shadow .15s;
       box-shadow: var(--shadow-sm);
+      white-space: nowrap;
     }
     .model-pill:hover { background: var(--hover-bg); box-shadow: var(--shadow-md); }
     .model-dot {
@@ -200,20 +245,27 @@
       background: var(--accent);
       box-shadow: 0 0 6px var(--accent-glow);
       animation: pulse 2.5s infinite;
+      flex-shrink: 0;
     }
     @keyframes pulse {
       0%,100% { opacity: 1; transform: scale(1); }
       50% { opacity: .6; transform: scale(0.8); }
     }
-    .model-pill svg { width: 13px; height: 13px; stroke: var(--text-subtle); fill: none; }
 
-    .topbar-actions { display: flex; gap: 4px; }
+    .topbar-right {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      flex-shrink: 0;
+    }
 
     /* ── Chat body ── */
     .chat-body {
       flex: 1;
       overflow-y: auto;
+      overflow-x: hidden;
       scroll-behavior: smooth;
+      -webkit-overflow-scrolling: touch;
     }
     .chat-body::-webkit-scrollbar { width: 5px; }
     .chat-body::-webkit-scrollbar-track { background: transparent; }
@@ -225,9 +277,8 @@
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      height: 100%;
+      min-height: 100%;
       padding: 40px 20px;
-      margin-top: 34px;
       text-align: center;
     }
 
@@ -266,39 +317,40 @@
 
     .empty-title {
       font-family: 'Lora', serif;
-      font-size: 28px;
+      font-size: 26px;
       font-weight: 600;
       margin-bottom: 12px;
       color: var(--text-primary);
       letter-spacing: -0.02em;
     }
     .empty-sub {
-      font-size: 15px;
+      font-size: 14.5px;
       color: var(--text-muted);
-      max-width: 360px;
+      max-width: 340px;
       line-height: 1.7;
-      margin-bottom: 40px;
+      margin-bottom: 36px;
     }
 
     .suggestion-grid {
       display: grid;
       grid-template-columns: 1fr 1fr;
-      gap: 12px;
+      gap: 10px;
       width: 100%;
-      max-width: 540px;
+      max-width: 520px;
     }
 
     .s-card {
       background: var(--input-bg);
       border: 1.5px solid var(--border-light);
       border-radius: 16px;
-      padding: 16px 18px;
+      padding: 14px 16px;
       cursor: pointer;
       text-align: left;
       transition: all .2s cubic-bezier(0.34, 1.56, 0.64, 1);
       box-shadow: var(--shadow-sm);
       position: relative;
       overflow: hidden;
+      -webkit-tap-highlight-color: transparent;
     }
     .s-card::before {
       content: '';
@@ -308,36 +360,22 @@
       opacity: 0;
       transition: opacity .2s;
     }
-    .s-card:hover {
+    .s-card:hover, .s-card:active {
       border-color: rgba(45,106,79,0.3);
       box-shadow: var(--shadow-md), 0 0 0 3px var(--accent-glow);
       transform: translateY(-2px);
     }
     .s-card:hover::before { opacity: 1; }
-    .s-card:active { transform: translateY(0); }
 
-    .si {
-      font-size: 22px;
-      margin-bottom: 10px;
-      display: block;
-    }
-    .st {
-      font-size: 13.5px;
-      font-weight: 600;
-      margin-bottom: 4px;
-      color: var(--text-primary);
-    }
-    .sd {
-      font-size: 12px;
-      color: var(--text-muted);
-      line-height: 1.6;
-    }
+    .si { font-size: 20px; margin-bottom: 8px; display: block; }
+    .st { font-size: 13px; font-weight: 600; margin-bottom: 3px; color: var(--text-primary); }
+    .sd { font-size: 11.5px; color: var(--text-muted); line-height: 1.6; }
 
     /* ── Messages ── */
     .messages-wrap { padding: 8px 0 24px; }
 
     .msg-block {
-      padding: 12px 0;
+      padding: 10px 0;
       animation: msgIn .22s cubic-bezier(0.34, 1.3, 0.64, 1) both;
     }
     @keyframes msgIn {
@@ -348,18 +386,18 @@
     .msg-inner {
       max-width: 720px;
       margin: 0 auto;
-      padding: 0 32px;
+      padding: 0 16px;
       display: flex;
-      gap: 14px;
+      gap: 12px;
       align-items: flex-start;
     }
 
     .m-avatar {
-      width: 32px; height: 32px;
+      width: 30px; height: 30px;
       border-radius: 10px;
       flex-shrink: 0;
       display: flex; align-items: center; justify-content: center;
-      font-size: 15px;
+      font-size: 14px;
       margin-top: 2px;
     }
     .m-avatar.bot {
@@ -368,7 +406,7 @@
     }
     .m-avatar.user {
       background: linear-gradient(135deg, var(--accent), var(--gold));
-      font-size: 13px;
+      font-size: 12px;
       font-weight: 700;
       color: white;
       box-shadow: 0 2px 8px rgba(45,106,79,0.2);
@@ -377,16 +415,16 @@
     .m-content { flex: 1; min-width: 0; }
 
     .m-sender {
-      font-size: 12.5px;
+      font-size: 11.5px;
       font-weight: 600;
-      margin-bottom: 6px;
+      margin-bottom: 5px;
       color: var(--text-subtle);
       text-transform: uppercase;
       letter-spacing: .06em;
     }
 
     .m-text {
-      font-size: 15px;
+      font-size: 14.5px;
       line-height: 1.8;
       color: var(--text-primary);
       white-space: pre-wrap;
@@ -397,7 +435,7 @@
       background: var(--bot-bubble);
       border: 1px solid var(--border-light);
       border-radius: 0 16px 16px 16px;
-      padding: 14px 18px;
+      padding: 12px 16px;
       box-shadow: var(--shadow-sm);
     }
 
@@ -405,13 +443,13 @@
       background: linear-gradient(135deg, rgba(45,106,79,0.08), rgba(45,106,79,0.04));
       border: 1px solid rgba(45,106,79,0.15);
       border-radius: 16px 0 16px 16px;
-      padding: 14px 18px;
+      padding: 12px 16px;
     }
 
     .m-actions {
       display: flex;
       gap: 2px;
-      margin-top: 8px;
+      margin-top: 6px;
       opacity: 0;
       transition: opacity .15s;
     }
@@ -431,14 +469,14 @@
     .act-btn svg { width: 14px; height: 14px; }
 
     /* ── Typing ── */
-    .typing-wrap { display: none; padding: 12px 0; }
+    .typing-wrap { display: none; padding: 10px 0; }
     .typing-wrap.on { display: block; }
 
     .typing-bubble {
       background: var(--bot-bubble);
       border: 1px solid var(--border-light);
       border-radius: 0 16px 16px 16px;
-      padding: 14px 18px;
+      padding: 12px 16px;
       display: inline-flex;
       align-items: center;
       gap: 5px;
@@ -449,6 +487,7 @@
       background: var(--text-subtle);
       border-radius: 50%;
       animation: td 1.4s infinite ease-in-out;
+      display: inline-block;
     }
     .typing-dots span:nth-child(2) { animation-delay: .2s; }
     .typing-dots span:nth-child(3) { animation-delay: .4s; }
@@ -460,8 +499,10 @@
     /* ── Input ── */
     .input-section {
       flex-shrink: 0;
-      padding: 10px 24px 22px;
+      padding: 8px 16px 16px;
       background: var(--main-bg);
+      /* Safe area for iOS home bar */
+      padding-bottom: calc(16px + env(safe-area-inset-bottom, 0px));
     }
     .input-container { max-width: 720px; margin: 0 auto; }
 
@@ -479,34 +520,11 @@
       box-shadow: var(--shadow-md), 0 0 0 4px var(--accent-glow);
     }
 
-    .input-toolbar {
-      display: flex;
-      align-items: center;
-      gap: 4px;
-      padding: 10px 14px 0;
-    }
-    .tool-chip {
-      display: flex;
-      align-items: center;
-      gap: 5px;
-      padding: 4px 10px;
-      border-radius: 20px;
-      border: 1px solid var(--border);
-      background: var(--sidebar-bg);
-      font-size: 12px;
-      color: var(--text-muted);
-      cursor: pointer;
-      transition: all .15s;
-      font-family: 'DM Sans', sans-serif;
-    }
-    .tool-chip:hover { border-color: rgba(45,106,79,0.35); color: var(--accent); background: rgba(45,106,79,0.05); }
-    .tool-chip svg { width: 12px; height: 12px; }
-
     .input-row {
       display: flex;
       align-items: flex-end;
-      padding: 10px 12px 12px 16px;
-      gap: 10px;
+      padding: 10px 10px 10px 14px;
+      gap: 8px;
     }
 
     textarea#userInput {
@@ -519,9 +537,10 @@
       font-size: 15px;
       line-height: 1.65;
       resize: none;
-      max-height: 200px;
+      max-height: 160px;
       overflow-y: auto;
       caret-color: var(--accent);
+      -webkit-appearance: none;
     }
     textarea#userInput::placeholder { color: var(--text-subtle); }
     textarea#userInput::-webkit-scrollbar { width: 3px; }
@@ -531,6 +550,7 @@
       display: flex;
       align-items: center;
       gap: 6px;
+      flex-shrink: 0;
     }
 
     .attach-btn {
@@ -543,13 +563,14 @@
       display: flex; align-items: center; justify-content: center;
       transition: all .15s;
       flex-shrink: 0;
+      -webkit-tap-highlight-color: transparent;
     }
     .attach-btn:hover { border-color: rgba(45,106,79,0.35); color: var(--accent); }
     .attach-btn svg { width: 15px; height: 15px; }
 
     .send-btn {
-      width: 36px; height: 36px;
-      border-radius: 11px;
+      width: 38px; height: 38px;
+      border-radius: 12px;
       background: var(--accent);
       border: none;
       cursor: pointer;
@@ -557,6 +578,7 @@
       flex-shrink: 0;
       transition: background .15s, transform .12s, box-shadow .15s, opacity .15s;
       box-shadow: 0 2px 8px rgba(45,106,79,0.3);
+      -webkit-tap-highlight-color: transparent;
     }
     .send-btn:hover:not(:disabled) {
       background: var(--accent-hover);
@@ -571,17 +593,19 @@
       align-items: center;
       justify-content: center;
       gap: 6px;
-      font-size: 11.5px;
+      font-size: 11px;
       color: var(--text-subtle);
-      margin-top: 10px;
+      margin-top: 8px;
+      text-align: center;
+      line-height: 1.5;
     }
-    .input-footer svg { width: 13px; height: 13px; stroke: var(--text-subtle); }
+    .input-footer svg { width: 12px; height: 12px; stroke: var(--text-subtle); flex-shrink: 0; }
 
-    /* ── Scroll to bottom button ── */
+    /* ── Scroll to bottom ── */
     .scroll-btn {
-      position: fixed;
-      bottom: 120px;
-      right: 32px;
+      position: absolute;
+      bottom: 100px;
+      right: 16px;
       width: 36px; height: 36px;
       border-radius: 50%;
       background: var(--input-bg);
@@ -597,14 +621,98 @@
     .scroll-btn:hover { color: var(--accent); border-color: rgba(45,106,79,0.4); }
     .scroll-btn svg { width: 16px; height: 16px; }
     .scroll-btn.visible { display: flex; }
+
+    /* ── MOBILE BREAKPOINT ── */
+    @media (max-width: 640px) {
+      .sidebar {
+        position: fixed;
+        top: 0; left: 0;
+        height: 100vh;
+        z-index: 100;
+        transform: translateX(-100%);
+        box-shadow: var(--shadow-md);
+      }
+      .sidebar.open {
+        transform: translateX(0);
+      }
+
+      .mobile-menu-btn {
+        display: flex;
+      }
+
+      .topbar {
+        padding: 0 12px;
+      }
+
+      .model-pill {
+        font-size: 13px;
+        padding: 6px 11px;
+      }
+
+      .empty-state {
+        padding: 24px 16px 16px;
+        justify-content: flex-start;
+        padding-top: 32px;
+      }
+
+      .empty-title { font-size: 22px; }
+      .empty-sub { font-size: 13.5px; margin-bottom: 28px; }
+
+      .suggestion-grid {
+        gap: 8px;
+        max-width: 100%;
+      }
+
+      .s-card {
+        padding: 12px 14px;
+        border-radius: 14px;
+      }
+      .si { font-size: 18px; margin-bottom: 6px; }
+      .st { font-size: 12.5px; }
+      .sd { font-size: 11px; }
+
+      .msg-inner {
+        padding: 0 12px;
+        gap: 10px;
+      }
+
+      .m-text { font-size: 14px; }
+
+      .msg-block.bot-msg .m-text,
+      .msg-block.user-msg .m-text {
+        padding: 10px 13px;
+      }
+
+      /* Always show copy button on mobile (no hover) */
+      .m-actions { opacity: 1; }
+
+      .input-section {
+        padding: 8px 12px 14px;
+        padding-bottom: calc(14px + env(safe-area-inset-bottom, 0px));
+      }
+
+      .input-footer { font-size: 10.5px; }
+    }
+
+    /* Landscape on small phones */
+    @media (max-width: 640px) and (orientation: landscape) {
+      .empty-state { justify-content: center; padding-top: 20px; }
+      .empty-logo-wrap { margin-bottom: 16px; }
+      .empty-title { font-size: 20px; margin-bottom: 8px; }
+      .empty-sub { margin-bottom: 20px; font-size: 13px; }
+      .empty-logo { width: 44px; height: 44px; font-size: 28px; }
+    }
   </style>
 </head>
 <body>
 
+<!-- Mobile sidebar overlay -->
+<div class="sidebar-overlay" id="sidebarOverlay" onclick="closeSidebar()"></div>
+
 <!-- Sidebar -->
-<div class="sidebar">
+<div class="sidebar" id="sidebar">
   <div class="sidebar-top">
-    <button class="new-chat-btn">
+    <button class="new-chat-btn" onclick="newChat()">
       <div class="logo-mark">🎓</div>
       College AI
     </button>
@@ -614,10 +722,10 @@
   </div>
 
   <div class="sidebar-label">Recent</div>
-  <div id="historyList" style="display:flex; flex-direction:column; gap:2px; flex:1; overflow-y:auto; padding: 0 12px;">
+  <div id="historyList">
     <div style="font-size:12px; color:var(--text-subtle); padding: 6px 12px; font-style:italic;">No chats yet</div>
   </div>
-  
+
   <div class="sidebar-bottom">
     <div class="sidebar-divider" style="margin: 0 0 8px 0;"></div>
     <div class="sidebar-label" style="padding: 0 12px; color: black; margin-left: 30px; margin-bottom: 6px;">Quick Links</div>
@@ -631,22 +739,25 @@
       <span>📞 Contact Office</span>
     </div>
   </div>
-
 </div>
-
 
 <!-- Main -->
 <div class="main">
 
   <div class="topbar">
+    <!-- Mobile hamburger -->
+    <button class="mobile-menu-btn" onclick="openSidebar()" title="Menu">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M3 12h18M3 6h18M3 18h18"/>
+      </svg>
+    </button>
+
     <button class="model-pill">
       <div class="model-dot"></div>
       College Assistant
     </button>
-    <div class="topbar-actions">
-      <button class="icon-btn" title="Search">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
-      </button>
+
+    <div class="topbar-right">
       <button class="icon-btn" id="shareBtn" title="Share" style="display:none;" onclick="shareChat()">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/>
@@ -656,7 +767,7 @@
     </div>
   </div>
 
-  <div class="chat-body" id="chatBody">
+  <div class="chat-body" id="chatBody" style="position:relative;">
 
     <!-- Empty state -->
     <div class="empty-state" id="emptyState">
@@ -694,7 +805,7 @@
     <!-- Messages -->
     <div class="messages-wrap" id="messages" style="display:none;"></div>
 
-    <!-- Typing -->
+    <!-- Typing indicator -->
     <div class="typing-wrap" id="typingWrap">
       <div class="msg-inner">
         <div class="m-avatar bot">🎓</div>
@@ -707,20 +818,19 @@
       </div>
     </div>
 
+    <button class="scroll-btn" id="scrollBtn" onclick="scrollBottom()" title="Scroll to bottom">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12l7 7 7-7"/></svg>
+    </button>
   </div>
-
-  <button class="scroll-btn" id="scrollBtn" onclick="scrollBottom()" title="Scroll to bottom">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12l7 7 7-7"/></svg>
-  </button>
 
   <div class="input-section">
     <div class="input-container">
       <div class="input-box">
         <div class="input-row">
           <textarea id="userInput" rows="1"
-          placeholder="Ask anything"
-          onkeydown="handleKey(event)"
-          oninput="autoResize(this)"></textarea>
+            placeholder="Ask anything"
+            onkeydown="handleKey(event)"
+            oninput="autoResize(this)"></textarea>
           <div class="input-actions">
             <button class="attach-btn" title="Attach file">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -735,7 +845,7 @@
       </div>
       <div class="input-footer">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-        College AI may make mistakes. Verify important information with the admissions office.
+        College AI may make mistakes. Verify important info with the admissions office.
       </div>
     </div>
   </div>
@@ -743,65 +853,83 @@
 </div>
 
 <script>
-  const inputEl  = document.getElementById('userInput');
-  const sendBtn  = document.getElementById('sendBtn');
-  const msgsEl   = document.getElementById('messages');
-  const emptyEl  = document.getElementById('emptyState');
-  const typingEl = document.getElementById('typingWrap');
-  const bodyEl   = document.getElementById('chatBody');
+  const inputEl     = document.getElementById('userInput');
+  const sendBtn     = document.getElementById('sendBtn');
+  const msgsEl      = document.getElementById('messages');
+  const emptyEl     = document.getElementById('emptyState');
+  const typingEl    = document.getElementById('typingWrap');
+  const bodyEl      = document.getElementById('chatBody');
   const scrollBtnEl = document.getElementById('scrollBtn');
+  const sidebar     = document.getElementById('sidebar');
+  const overlay     = document.getElementById('sidebarOverlay');
 
-  let chatHistory = [];
+  let chatHistory   = [];
   let currentChatId = null;
 
-  function addToHistory(question) {
-    // Don't add duplicate of the current active chat
-    if (currentChatId && chatHistory[0]?.id === currentChatId) return;
+  /* ── Sidebar toggle ── */
+  function openSidebar() {
+    sidebar.classList.add('open');
+    overlay.classList.add('open');
+    document.body.style.overflow = 'hidden';
+  }
+  function closeSidebar() {
+    sidebar.classList.remove('open');
+    overlay.classList.remove('open');
+    document.body.style.overflow = '';
+  }
 
+  /* Close sidebar when a history item or quick link is tapped on mobile */
+  document.querySelectorAll('.history-item').forEach(el => {
+    el.addEventListener('click', () => {
+      if (window.innerWidth <= 640) closeSidebar();
+    });
+  });
+
+  /* ── History ── */
+  function addToHistory(question) {
+    if (currentChatId && chatHistory[0]?.id === currentChatId) return;
     const id = Date.now();
     currentChatId = id;
-    const entry = { id, label: question.length > 32 ? question.slice(0, 32) + '…' : question };
-    chatHistory.unshift(entry);
-
+    chatHistory.unshift({ id, label: question.length > 32 ? question.slice(0, 32) + '…' : question });
     renderHistory();
   }
 
   function renderHistory() {
     const list = document.getElementById('historyList');
     if (!chatHistory.length) {
-      list.innerHTML = `<div style="font-size:12px; color:var(--text-subtle); padding:6px 12px; font-style:italic;">No chats yet</div>`;
+      list.innerHTML = `<div style="font-size:12px;color:var(--text-subtle);padding:6px 12px;font-style:italic;">No chats yet</div>`;
       return;
     }
-    list.innerHTML = chatHistory.map(entry => `
-      <div class="history-item ${entry.id === currentChatId ? 'active' : ''}"
-          onclick="loadHistory(${entry.id})">
-        ${entry.label}
-      </div>
-    `).join('');
+    list.innerHTML = chatHistory.map(e => `
+      <div class="history-item ${e.id === currentChatId ? 'active' : ''}"
+           onclick="loadHistory(${e.id}); if(window.innerWidth<=640) closeSidebar();">
+        ${e.label}
+      </div>`).join('');
   }
 
   function loadHistory(id) {
     currentChatId = id;
-    renderHistory(); // just highlights the selected one for now
+    renderHistory();
   }
 
+  /* ── Input ── */
   inputEl.addEventListener('input', () => {
     sendBtn.disabled = !inputEl.value.trim();
   });
 
-  // Scroll to bottom button visibility
   bodyEl.addEventListener('scroll', () => {
-    const nearBottom = bodyEl.scrollHeight - bodyEl.scrollTop - bodyEl.clientHeight < 120;
-    scrollBtnEl.classList.toggle('visible', !nearBottom && msgsEl.style.display !== 'none');
+    const near = bodyEl.scrollHeight - bodyEl.scrollTop - bodyEl.clientHeight < 120;
+    scrollBtnEl.classList.toggle('visible', !near && msgsEl.style.display !== 'none');
   });
 
   function autoResize(el) {
     el.style.height = 'auto';
-    el.style.height = Math.min(el.scrollHeight, 200) + 'px';
+    el.style.height = Math.min(el.scrollHeight, 160) + 'px';
   }
 
   function handleKey(e) {
-    if (e.key === 'Enter' && !e.shiftKey) {
+    /* On mobile, Enter adds newline naturally; only intercept on desktop */
+    if (e.key === 'Enter' && !e.shiftKey && window.innerWidth > 640) {
       e.preventDefault();
       if (!sendBtn.disabled) send();
     }
@@ -815,26 +943,18 @@
 
   function appendMsg(text, role) {
     showMessages();
-
     const block = document.createElement('div');
     block.className = `msg-block ${role === 'bot' ? 'bot-msg' : 'user-msg'}`;
 
-    const inner = document.createElement('div');
-    inner.className = 'msg-inner';
-
-    const avatar = document.createElement('div');
-    avatar.className = `m-avatar ${role}`;
+    const inner   = document.createElement('div'); inner.className = 'msg-inner';
+    const avatar  = document.createElement('div'); avatar.className = `m-avatar ${role}`;
     avatar.textContent = role === 'bot' ? '🎓' : 'S';
 
-    const content = document.createElement('div');
-    content.className = 'm-content';
-
-    const sender = document.createElement('div');
-    sender.className = 'm-sender';
+    const content = document.createElement('div'); content.className = 'm-content';
+    const sender  = document.createElement('div'); sender.className = 'm-sender';
     sender.textContent = role === 'bot' ? 'College Assistant' : 'You';
 
-    const msgText = document.createElement('div');
-    msgText.className = 'm-text';
+    const msgText = document.createElement('div'); msgText.className = 'm-text';
     msgText.textContent = text;
 
     content.appendChild(sender);
@@ -888,6 +1008,9 @@
     appendMsg(text, 'user');
     setTyping(true);
 
+    /* Close sidebar on mobile when a message is sent */
+    if (window.innerWidth <= 640) closeSidebar();
+
     try {
       const res = await fetch('https://college-chatbot-o7fo.onrender.com/chat', {
         method: 'POST',
@@ -897,14 +1020,13 @@
       const data = await res.json();
       setTyping(false);
       appendMsg(data.answer, 'bot');
-    } catch (err) {
+    } catch {
       setTyping(false);
       appendMsg("Sorry, I couldn't reach the server. Please check your connection and try again.", 'bot');
     }
 
     sendBtn.disabled = false;
     inputEl.focus();
-
     addToHistory(text);
   }
 
@@ -923,36 +1045,33 @@
     sendBtn.disabled = true;
     scrollBtnEl.classList.remove('visible');
     document.getElementById('shareBtn').style.display = 'none';
-      }
+    currentChatId = null;
+    if (window.innerWidth <= 640) closeSidebar();
+  }
 
-      function shareChat() {
-      const msgs = msgsEl.querySelectorAll('.msg-block');
-      if (!msgs.length) return;
+  function shareChat() {
+    const msgs = msgsEl.querySelectorAll('.msg-block');
+    if (!msgs.length) return;
 
-      let text = '🎓 College AI Chat\n' + '─'.repeat(30) + '\n\n';
-      msgs.forEach(block => {
-        const sender = block.querySelector('.m-sender').textContent.trim();
-        const message = block.querySelector('.m-text').textContent.trim();
-        text += `${sender}:\n${message}\n\n`;
-      });
+    let text = '🎓 College AI Chat\n' + '─'.repeat(30) + '\n\n';
+    msgs.forEach(block => {
+      const s = block.querySelector('.m-sender').textContent.trim();
+      const m = block.querySelector('.m-text').textContent.trim();
+      text += `${s}:\n${m}\n\n`;
+    });
 
-      if (navigator.share) {
-        navigator.share({ title: 'College AI Chat', text: text })
-          .catch(() => {});
-      } else {
-        navigator.clipboard.writeText(text).then(() => {
-          const btn = document.getElementById('shareBtn');
-          const orig = btn.innerHTML;
-          btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>`;
-          btn.title = 'Copied!';
-          setTimeout(() => { btn.innerHTML = orig; btn.title = 'Share'; }, 2000);
-        }).catch(() => {});
-      }
-
-      currentChatId = null;
-      renderHistory();
+    if (navigator.share) {
+      navigator.share({ title: 'College AI Chat', text }).catch(() => {});
+    } else {
+      navigator.clipboard.writeText(text).then(() => {
+        const btn = document.getElementById('shareBtn');
+        const orig = btn.innerHTML;
+        btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>`;
+        btn.title = 'Copied!';
+        setTimeout(() => { btn.innerHTML = orig; btn.title = 'Share'; }, 2000);
+      }).catch(() => {});
     }
-
+  }
 </script>
 </body>
 </html>
