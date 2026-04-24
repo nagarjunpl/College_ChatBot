@@ -60,7 +60,7 @@ def chat(query: Query):
                     "role": "system",
                     "content": """You are an AI assistant for PES College of Engineering.
                     Answer clearly and completely using the given context.
-                    Answer only specific questions about PESCE, and say "I don't know" if the answer isn't in the context."""
+                    """
                 },
                 {
                     "role": "user",
