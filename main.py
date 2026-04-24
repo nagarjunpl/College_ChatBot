@@ -47,32 +47,29 @@ def home():
 def chat(query: Query):
     try:
         results = db.similarity_search(query.question, k=5)
+
         context = "\n\n---\n\n".join([doc.page_content for doc in results])[:4000]
 
         if not context.strip():
-            return {"answer": "Sorry, I don't have information on that. Please contact the admissions office directly."}
+            return {"answer": "I don't know based on available data."}
 
         response = client.chat.completions.create(
             model="llama-3.1-8b-instant",
             messages=[
                 {
                     "role": "system",
-                    "content": """You are an AI assistant for PES College of Engineering. Follow these rules strictly:
-- Answer ONLY using the provided context.
-- If the context does not clearly answer the question, respond in 1-2 short sentences saying you don't have that information and suggest contacting the office.
-- If the context does answer the question, still keep your answer concise — 2 to 4 sentences max.
-- Never make up information. Never give long explanations."""
+                    "content": """You are an AI assistant for PES College of Engineering.
+                    Answer clearly and completely using the given context."""
                 },
                 {
                     "role": "user",
                     "content": f"Context:\n{context}\n\nQuestion: {query.question}"
                 }
-            ],
-            max_tokens=200  # 👈 hard cap on response length
+            ]
         )
 
         return {"answer": response.choices[0].message.content}
 
     except Exception as e:
         print("ERROR:", e)
-        return {"answer": "Sorry, something went wrong. Please try again."}
+        return {"answer": "Sorry, something went wrong."}
