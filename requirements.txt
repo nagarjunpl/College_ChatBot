@@ -6,4 +6,3 @@ langchain
 langchain-community
 faiss-cpu
 sentence-transformers
-langchain-huggingface
