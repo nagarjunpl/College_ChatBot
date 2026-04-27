@@ -1,27 +1,28 @@
 import os
-from langchain_community.document_loaders import PyPDFLoader
-from langchain_text_splitters import CharacterTextSplitter
-from langchain_community.embeddings import HuggingFaceEmbeddings
+from langchain_community.document_loaders import WebBaseLoader
+from langchain_text_splitters import RecursiveCharacterTextSplitter
+from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_community.vectorstores import FAISS
 
-all_docs = []
+# Fix user agent
+os.environ["USER_AGENT"] = "Mozilla/5.0"
 
-folder_path = "data"
+urls = [
+    "https://pes-data-for-chatbot.vercel.app/"
+]
 
-for file in os.listdir(folder_path):
-    if file.endswith(".pdf"):
-        loader = PyPDFLoader(os.path.join(folder_path, file))
-        pages = loader.load()
-        all_docs.extend(pages)
+loader = WebBaseLoader(urls)
+docs = loader.load()
 
-splitter = CharacterTextSplitter(chunk_size=1000, chunk_overlap=150)
-docs = splitter.split_documents(all_docs)
+splitter = RecursiveCharacterTextSplitter(
+    chunk_size=1000,
+    chunk_overlap=150
+)
+documents = splitter.split_documents(docs)
 
 embeddings = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
 
-db = FAISS.from_documents(docs, embeddings)
-
-# 🔥 Save DB
+db = FAISS.from_documents(documents, embeddings)
 db.save_local("faiss_index")
 
-print("Vector DB saved!")
+print("Clean DB created successfully!")

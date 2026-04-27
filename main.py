@@ -6,8 +6,9 @@ import os
 from groq import Groq
 from dotenv import load_dotenv
 
-from langchain_community.embeddings import FakeEmbeddings
 from langchain_community.vectorstores import FAISS
+from langchain_community.embeddings import HuggingFaceEmbeddings
+embeddings = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
 
 load_dotenv()
 
@@ -25,7 +26,7 @@ class Query(BaseModel):
     question: str
 
 # ✅ ONLY LOAD FAISS (no preprocessing)
-embeddings = FakeEmbeddings(size=384)
+
 
 db = FAISS.load_local(
     "faiss_index",

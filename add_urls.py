@@ -14,14 +14,14 @@ import requests
 from bs4 import BeautifulSoup
 from urllib.parse import urljoin, urlparse
 from langchain_text_splitters import RecursiveCharacterTextSplitter
-from langchain_community.embeddings import FakeEmbeddings
 from langchain_community.vectorstores import FAISS
 from langchain_core.documents import Document
+from langchain_community.embeddings import HuggingFaceEmbeddings
+EMBEDDINGS = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
 
 # ── Config ────────────────────────────────────────────────────────────────────
 
 FAISS_INDEX_PATH = "faiss_index"
-EMBEDDINGS = FakeEmbeddings(size=384)
 CHUNK_SIZE = 500
 CHUNK_OVERLAP = 50
 
@@ -40,18 +40,21 @@ HEADERS = {
 }
 
 # ── Scraping ──────────────────────────────────────────────────────────────────
-
 def scrape_url(url: str) -> str:
     """Fetch and extract clean text from a URL with debug info."""
     try:
         print(f"  → Sending request to {url}")
         response = requests.get(url, headers=HEADERS, timeout=15, verify=False)
         print(f"  → Status code: {response.status_code}")
-        print(f"  → Content length: {len(response.text)} characters")
+        print(f"  → Content length: {len(response.content)} bytes")
 
         if response.status_code != 200:
             print(f"  ⚠️  Non-200 status, skipping.")
             return ""
+
+        # Fix encoding — detect from content instead of headers
+        response.encoding = response.apparent_encoding
+        print(f"  → Detected encoding: {response.encoding}")
 
         soup = BeautifulSoup(response.text, "html.parser")
 
@@ -70,39 +73,22 @@ def scrape_url(url: str) -> str:
             soup.find("body")
         )
 
-        if main:
-            text = main.get_text(separator="\n")
-        else:
-            text = soup.get_text(separator="\n")
+        text = main.get_text(separator=" ", strip=True) if main else soup.get_text(separator=" ", strip=True)
 
-        lines = [line.strip() for line in text.splitlines() if len(line.strip()) > 20]
-        result = "\n".join(lines)
+        # Clean up whitespace
+        import re
+        text = re.sub(r'\s+', ' ', text).strip()
 
-        print(f"  → Extracted {len(result)} characters of clean text")
+        print(f"  → Extracted {len(text)} characters of clean text")
 
-        if len(result) < 100:
-            print(f"  ⚠️  Very little text extracted — site may use JavaScript rendering.")
+        if len(text) < 100:
+            print(f"  ⚠️  Very little text extracted.")
 
-        return result
-
-    except requests.exceptions.SSLError:
-        print(f"  ⚠️  SSL error, retrying without SSL verification...")
-        try:
-            response = requests.get(url, headers=HEADERS, timeout=15, verify=False)
-            soup = BeautifulSoup(response.text, "html.parser")
-            for tag in soup(["script", "style", "nav", "footer", "header"]):
-                tag.decompose()
-            text = soup.get_text(separator="\n")
-            lines = [line.strip() for line in text.splitlines() if len(line.strip()) > 20]
-            return "\n".join(lines)
-        except Exception as e2:
-            print(f"  ❌ Retry also failed: {e2}")
-            return ""
+        return text
 
     except Exception as e:
         print(f"  ❌ Failed to scrape {url}: {e}")
         return ""
-
 
 def crawl_site(start_url: str, depth: int = 1) -> list:
     visited = set()
