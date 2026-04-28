@@ -6,6 +6,6 @@ langchain
 langchain-community
 langchain-text-splitters
 faiss-cpu
-fastembed==0.3.6
+fastembed==0.5.0
 beautifulsoup4
 requests
