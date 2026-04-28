@@ -1,28 +1,31 @@
 import os
 from langchain_community.document_loaders import WebBaseLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
-from langchain_huggingface import HuggingFaceEmbeddings
+from langchain_community.embeddings import FastEmbedEmbeddings
 from langchain_community.vectorstores import FAISS
 
-# Fix user agent
 os.environ["USER_AGENT"] = "Mozilla/5.0"
 
+# ✅ Only website URLs — NO PDFs
 urls = [
-    "https://pes-data-for-chatbot.vercel.app/"
+    "https://pes-data-for-chatbot.vercel.app/",
 ]
 
 loader = WebBaseLoader(urls)
+loader.requests_kwargs = {"verify": False}
 docs = loader.load()
 
-splitter = RecursiveCharacterTextSplitter(
-    chunk_size=1000,
-    chunk_overlap=150
-)
-documents = splitter.split_documents(docs)
+print(f"✅ Loaded {len(docs)} pages")
+for doc in docs:
+    print(f"   - {doc.metadata.get('source')} ({len(doc.page_content)} chars)")
 
-embeddings = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
+splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=150)
+documents = splitter.split_documents(docs)
+print(f"✅ Split into {len(documents)} chunks")
+
+embeddings = FastEmbedEmbeddings(model_name="BAAI/bge-small-en-v1.5")
 
 db = FAISS.from_documents(documents, embeddings)
 db.save_local("faiss_index")
 
-print("Clean DB created successfully!")
+print("✅ FAISS index saved — website only!")

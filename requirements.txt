@@ -4,5 +4,8 @@ groq
 python-dotenv
 langchain
 langchain-community
+langchain-text-splitters
 faiss-cpu
-sentence-transformers
+fastembed
+beautifulsoup4
+requests
