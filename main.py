@@ -7,8 +7,8 @@ from groq import Groq
 from dotenv import load_dotenv
 
 from langchain_community.vectorstores import FAISS
-from langchain_community.embeddings import FastEmbedEmbeddings
-embeddings = FastEmbedEmbeddings(model_name="BAAI/bge-small-en-v1.5")
+from langchain_huggingface import HuggingFaceEmbeddings
+embeddings = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
 
 load_dotenv()
 
