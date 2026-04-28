@@ -27,7 +27,7 @@ class Query(BaseModel):
 class HFAPIEmbeddings(Embeddings):
     def __init__(self, api_key: str):
         self.api_key = api_key
-        self.url = "https://api-inference.huggingface.co/pipeline/feature-extraction/sentence-transformers/all-MiniLM-L6-v2"
+        self.url = "https://api-inference.huggingface.co/models/BAAI/bge-small-en-v1.5"
         self.headers = {"Authorization": f"Bearer {api_key}"}
 
     def _call_api(self, inputs):
