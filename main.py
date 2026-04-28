@@ -1,14 +1,11 @@
 from fastapi import FastAPI
 from pydantic import BaseModel
 from fastapi.middleware.cors import CORSMiddleware
-
 import os
 from groq import Groq
 from dotenv import load_dotenv
-
-from langchain_community.vectorstores import FAISS
 from langchain_huggingface import HuggingFaceEmbeddings
-embeddings = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
+from langchain_community.vectorstores import FAISS
 
 load_dotenv()
 
@@ -25,18 +22,24 @@ app.add_middleware(
 class Query(BaseModel):
     question: str
 
-# ✅ ONLY LOAD FAISS (no preprocessing)
+# Load once at startup but after server is ready
+embeddings = None
+db = None
 
+@app.on_event("startup")
+async def startup_event():
+    global embeddings, db
+    embeddings = HuggingFaceEmbeddings(
+        model_name="all-MiniLM-L6-v2",
+        model_kwargs={"device": "cpu"}
+    )
+    db = FAISS.load_local(
+        "faiss_index",
+        embeddings,
+        allow_dangerous_deserialization=True
+    )
+    print("✅ FAISS loaded")
 
-db = FAISS.load_local(
-    "faiss_index",
-    embeddings,
-    allow_dangerous_deserialization=True
-)
-
-print("✅ FAISS loaded")
-
-# Groq setup
 api_key = os.getenv("GROQ_API_KEY")
 client = Groq(api_key=api_key)
 
@@ -48,7 +51,6 @@ def home():
 def chat(query: Query):
     try:
         results = db.similarity_search(query.question, k=5)
-
         context = "\n\n---\n\n".join([doc.page_content for doc in results])[:4000]
 
         if not context.strip():
@@ -59,9 +61,7 @@ def chat(query: Query):
             messages=[
                 {
                     "role": "system",
-                    "content": """You are an AI assistant for PES College of Engineering.
-                    Answer clearly and completely using the given context.
-                    """
+                    "content": "You are an AI assistant for PES College of Engineering. Answer clearly using the given context."
                 },
                 {
                     "role": "user",
@@ -69,7 +69,6 @@ def chat(query: Query):
                 }
             ]
         )
-
         return {"answer": response.choices[0].message.content}
 
     except Exception as e:
