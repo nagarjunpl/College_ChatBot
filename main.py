@@ -1,11 +1,12 @@
 from fastapi import FastAPI
 from pydantic import BaseModel
 from fastapi.middleware.cors import CORSMiddleware
-import os
+from langchain_core.embeddings import Embeddings
+from langchain_community.vectorstores import FAISS
 from groq import Groq
 from dotenv import load_dotenv
-from langchain_huggingface import HuggingFaceEmbeddings
-from langchain_community.vectorstores import FAISS
+import requests
+import os
 
 load_dotenv()
 
@@ -22,26 +23,38 @@ app.add_middleware(
 class Query(BaseModel):
     question: str
 
-# Load once at startup but after server is ready
-embeddings = None
+# ✅ Lightweight HF API embeddings — no torch, no sentence-transformers
+class HFAPIEmbeddings(Embeddings):
+    def __init__(self, api_key: str):
+        self.api_key = api_key
+        self.url = "https://api-inference.huggingface.co/pipeline/feature-extraction/sentence-transformers/all-MiniLM-L6-v2"
+        self.headers = {"Authorization": f"Bearer {api_key}"}
+
+    def embed_documents(self, texts):
+        response = requests.post(self.url, headers=self.headers, json={"inputs": texts})
+        return response.json()
+
+    def embed_query(self, text):
+        response = requests.post(self.url, headers=self.headers, json={"inputs": text})
+        result = response.json()
+        # HF API returns list of lists for single string — flatten if needed
+        if isinstance(result[0], list):
+            return result[0]
+        return result
+
 db = None
+client = Groq(api_key=os.getenv("GROQ_API_KEY"))
 
 @app.on_event("startup")
 async def startup_event():
-    global embeddings, db
-    embeddings = HuggingFaceEmbeddings(
-        model_name="all-MiniLM-L6-v2",
-        model_kwargs={"device": "cpu"}
-    )
+    global db
+    embeddings = HFAPIEmbeddings(api_key=os.getenv("HF_TOKEN"))
     db = FAISS.load_local(
         "faiss_index",
         embeddings,
         allow_dangerous_deserialization=True
     )
     print("✅ FAISS loaded")
-
-api_key = os.getenv("GROQ_API_KEY")
-client = Groq(api_key=api_key)
 
 @app.get("/")
 def home():
@@ -59,14 +72,8 @@ def chat(query: Query):
         response = client.chat.completions.create(
             model="llama-3.1-8b-instant",
             messages=[
-                {
-                    "role": "system",
-                    "content": "You are an AI assistant for PES College of Engineering. Answer clearly using the given context."
-                },
-                {
-                    "role": "user",
-                    "content": f"Context:\n{context}\n\nQuestion: {query.question}"
-                }
+                {"role": "system", "content": "You are an AI assistant for PES College of Engineering. Answer clearly using the given context."},
+                {"role": "user", "content": f"Context:\n{context}\n\nQuestion: {query.question}"}
             ]
         )
         return {"answer": response.choices[0].message.content}
