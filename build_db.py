@@ -9,6 +9,14 @@ os.environ["USER_AGENT"] = "Mozilla/5.0"
 # ✅ Only website URLs — NO PDFs
 urls = [
     "https://pes-data-for-chatbot.vercel.app/",
+    "https://pes-data-for-chatbot.vercel.app/index.html",
+    "https://pes-data-for-chatbot.vercel.app/about.html",
+    "https://pes-data-for-chatbot.vercel.app/programs.html",
+    "https://pes-data-for-chatbot.vercel.app/academics.html",
+    "https://pes-data-for-chatbot.vercel.app/admissions.html",
+    "https://pes-data-for-chatbot.vercel.app/research.html",
+    "https://pes-data-for-chatbot.vercel.app/placements.html"
+
 ]
 
 loader = WebBaseLoader(urls)
