@@ -8,3 +8,4 @@ langchain-text-splitters
 faiss-cpu
 beautifulsoup4
 requests
+fastembed
