@@ -32,12 +32,13 @@ An intelligent AI-powered chatbot for PES College of Engineering (PESCE) that he
  
 ```
 college-chatbot/
-├── main.py          # FastAPI backend
-├── build_db.py      # Script to build FAISS index from website
-├── faiss_index/     # Generated vector database (after running build_db.py)
-├── requirements.txt # Python dependencies
-├── Procfile         # Render deployment config
-├── .python-version  # Python version pin
+├── static/index.html # Frontend file
+├── main.py           # FastAPI backend
+├── build_db.py       # Script to build FAISS index from website
+├── faiss_index/      # Generated vector database (after running build_db.py)
+├── requirements.txt  # Python dependencies
+├── Procfile          # Render deployment config
+├── .python-version   # Python version pin
 └── README.md
 ```
  
