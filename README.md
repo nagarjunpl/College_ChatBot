@@ -1,21 +1,21 @@
-# 🎓 College AI Chatbot
+# College AI Chatbot
  
 An intelligent AI-powered chatbot for PES College of Engineering (PESCE) that helps students instantly find information about admissions, courses, placements, facilities, and more.
  
 ---
  
-## ✨ Features
+## Features
  
-- 🤖 AI-based Question Answering — no predefined questions needed
-- 🔍 Semantic search using FAISS vector database
-- 🌐 Fetches data from the college website automatically
-- ⚡ Fast responses powered by Groq (LLaMA 3.1)
-- 📱 Fully responsive UI — works on mobile & desktop
-- 💬 Chat history sidebar with quick links
-- 🔒 No HuggingFace API dependency — runs embeddings locally
+-  AI-based Question Answering — no predefined questions needed
+-  Semantic search using FAISS vector database
+-  Fetches data from the college website automatically
+-  Fast responses powered by Groq (LLaMA 3.1)
+-  Fully responsive UI — works on mobile & desktop
+-  Chat history sidebar with quick links
+-  No HuggingFace API dependency — runs embeddings locally
 ---
 
-## 🛠️ Tech Stack
+##  Tech Stack
  
 | Layer | Technology |
 |-------|-----------|
@@ -28,7 +28,7 @@ An intelligent AI-powered chatbot for PES College of Engineering (PESCE) that he
  
 ---
  
-## 📁 Project Structure
+##  Project Structure
  
 ```
 college-chatbot/
@@ -44,7 +44,7 @@ college-chatbot/
  
 ---
  
-## 🧠 How It Works
+##  How It Works
  
 ```
 User Question
